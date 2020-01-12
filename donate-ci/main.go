@@ -129,6 +129,29 @@ func triggerPayout(gh *github.Client, ctx context.Context,
 		return
 	}
 	defer resp.Body.Close()
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	tx := string(bytes)
+	tx = strings.TrimSpace(tx)
+
+	if len(tx) != 64 { // TXID is always 32 bytes (64 characters)
+		return
+	}
+
+	body := fmt.Sprintf("Tx: [%s](https://blockchair.com/bitcoin/transaction/%s)",
+		tx, tx)
+
+	number := *issue.Number
+	comment := github.IssueComment{Body: &body}
+	_, _, err = gh.Issues.CreateComment(ctx, owner, project, number, &comment)
+	if err != nil {
+		return
+	}
+
 	return
 }
 
