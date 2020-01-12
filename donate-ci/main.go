@@ -37,15 +37,26 @@ func getBalance(btc string) (balance float64, err error) {
 }
 
 func genBody(btc string) (body string) {
-	body = "Address for donations: " + btc
+	body = fmt.Sprintf("### Address for donations: "+
+		"[%s](https://blockchair.com/bitcoin/address/%s).\n", btc, btc)
 
 	balance, err := getBalance(btc)
 	if err == nil {
-		body += fmt.Sprintf(" (%.8f BTC)", balance)
+		body += fmt.Sprintf("#### Current balance: %.8f BTC", balance)
 	}
 	body += "\n"
 
-	// TODO explain how to get donation
+	body += "Usage:\n"
+	body += "1. Specify this issue in commit message ([keywords]" +
+		"(https://help.github.com/en/github/managing-your-work-on-" +
+		"github/closing-issues-using-keywords)).\n"
+	body += "2. Put to the body of pull request your BTC address in " +
+		"the format: BTC{your_btc_address}.\n"
+	body += "###### The default fee is 0% (someone who will solve this " +
+		"issue will get all money without commission). " +
+		"Consider donating to the [donation project]" +
+		"(https://github.com/jollheef/donate) " +
+		"itself, it'll help keep it work with zero fees.\n"
 	return
 }
 
