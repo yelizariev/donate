@@ -14,3 +14,20 @@ jobs:
 
     - name: Build
       run: go build
+
+  nix-build:
+    name: nix-build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Install Nix
+      run: |
+        curl https://nixos.org/nix/install | sh
+        . ~/.nix-profile/etc/profile.d/nix.sh
+        nix-channel --update
+
+    - name: Build
+      run: |
+        . ~/.nix-profile/etc/profile.d/nix.sh
+        nix-build
