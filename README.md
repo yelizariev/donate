@@ -10,7 +10,7 @@ Query donation address for issue:
 
 List all issues with cryptocurrency wallets (right now only BTC) address for repo:
 
-    curl -s 'https://donate.dumpstack.io/query?repo=github.com/jollheef/appm | json_pp
+    curl -s 'https://donate.dumpstack.io/query?repo=github.com/jollheef/appvm' | json_pp
 
 Trigger payout:
 
