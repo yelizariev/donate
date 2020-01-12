@@ -99,10 +99,9 @@ func updateIssue(gh *github.Client, ctx context.Context,
 	for _, comment := range comments {
 		if strings.Contains(*comment.Body, btc) {
 			found = true
-			// TODO update comment
-			// comment := github.IssueComment{Body: &body}
-			// _, _, err = gh.Issues.EditComment(ctx, owner, project,
-			// 	*comment.ID, &comment)
+			newcomment := github.IssueComment{Body: &body}
+			_, _, err = gh.Issues.EditComment(ctx, owner, project,
+				*comment.ID, &newcomment)
 			if err != nil {
 				return
 			}
