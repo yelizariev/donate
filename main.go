@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"code.dumpstack.io/lib/cryptocurrency"
-	"github.com/google/go-github/github"
+	"github.com/google/go-github/v29/github"
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/oauth2"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
