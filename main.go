@@ -44,7 +44,7 @@ func parse(url *url.URL) (repo, issue string, err error) {
 }
 
 func lookupPR(gh *github.Client, ctx context.Context,
-	owner, project, commit string) (body string, err error) {
+	owner, project, commit string) (body string, found bool, err error) {
 
 	pullRequests, _, err := gh.PullRequests.ListPullRequestsWithCommit(
 		ctx, owner, project, commit, nil)
@@ -52,7 +52,6 @@ func lookupPR(gh *github.Client, ctx context.Context,
 		return
 	}
 
-	found := false
 	for _, pr := range pullRequests {
 		if pr.MergedAt == nil {
 			continue
@@ -61,11 +60,6 @@ func lookupPR(gh *github.Client, ctx context.Context,
 		found = true
 		body = *pr.Body
 		break
-	}
-
-	if !found {
-		err = errors.New("pull request with a merge commit not found")
-		return
 	}
 	return
 }
@@ -223,8 +217,12 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 			commit := *event.CommitID
 
 			// 3. Check that there's bitcoin address in pull request
-			body, err := lookupPR(gh, ctx, owner, project, commit)
+			body, found, err := lookupPR(gh, ctx, owner, project, commit)
 			if err != nil {
+				return
+			}
+
+			if !found {
 				continue
 			}
 
