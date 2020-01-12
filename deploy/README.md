@@ -15,7 +15,7 @@ Notes:
 
     nix-env -iA nixos.wget nixos.gitMinimal nixos.vim
 
-    wget -O /mnt/etc/nixos/configuration.nix https://raw.githubusercontent.com/jollheef/donate/master/deploy/configuration.nix
+    wget -O /mnt/etc/nixos/configuration.nix https://code.dumpstack.io/tools/donate/raw/branch/master/deploy/configuration.nix
 
     vim configuration.nix
 
