@@ -97,10 +97,14 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	}
 	if !exists {
 		// Check that issue is really exists on GitHub
-		_, _, err := gh.Issues.Get(ctx, owner, project, issueNo)
+		ghIssue, _, err := gh.Issues.Get(ctx, owner, project, issueNo)
 		if err != nil {
 			log.Println(err)
 			fmt.Fprint(w, "invalid repo/issue\n")
+			return
+		}
+		if *ghIssue.State != "open" {
+			fmt.Fprint(w, "issue is not open\n")
 			return
 		}
 
