@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -16,6 +17,37 @@ import (
 	"golang.org/x/oauth2"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
+
+func getBalance(btc string) (balance float64, err error) {
+	urlf := "https://api.blockcypher.com/v1/btc/main/addrs/%s/balance"
+	resp, err := http.Get(fmt.Sprintf(urlf, btc))
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	var result struct{ Balance float64 }
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return
+	}
+
+	balance = result.Balance / 100000000
+	return
+}
+
+func genBody(btc string) (body string) {
+	body = "Address for donations: " + btc
+
+	balance, err := getBalance(btc)
+	if err == nil {
+		body += fmt.Sprintf(" (%.8f BTC)", balance)
+	}
+	body += "\n"
+
+	// TODO explain how to get donation
+	return
+}
 
 func getAddr(gh *github.Client, ctx context.Context,
 	owner, project, endpoint string, issueNo int) (btc string, err error) {
@@ -48,25 +80,30 @@ func updateIssue(gh *github.Client, ctx context.Context,
 		return
 	}
 
+	body := genBody(btc)
+
 	comments, _, err := gh.Issues.ListComments(ctx, owner, project, number, nil)
 
 	found := false
 	for _, comment := range comments {
 		if strings.Contains(*comment.Body, btc) {
 			found = true
+			comment := github.IssueComment{Body: &body}
+			_, _, err = gh.Issues.EditComment(ctx, owner, project,
+				int64(number), &comment)
+			if err != nil {
+				return
+			}
 		}
 	}
 
 	if !found {
-		body := "address for donations: " + btc
 		comment := github.IssueComment{Body: &body}
 		_, _, err = gh.Issues.CreateComment(ctx, owner, project, number, &comment)
 		if err != nil {
 			return
 		}
 	}
-
-	// TODO update label with donation amount
 	return
 }
 
