@@ -1,0 +1,3 @@
+# donate
+
+Cryptocurrency donation daemon.
