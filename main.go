@@ -138,24 +138,43 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		return
 	}
 
-	_, err = strconv.Atoi(issue) // just additional sanity check
+	issueNo, err := strconv.Atoi(issue) // just additional sanity check
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
+	fields := strings.Split(repo, "/")
+	if len(fields) != 3 {
+		fmt.Fprint(w, "invalid repo\n")
+		return
+	}
+	// fields[0] is 'github.com'
+	owner := fields[1]
+	project := fields[2]
+
 	seed, address, err := issueGet(db, repo, issue)
 	if err != nil {
 		log.Println(err)
-		fmt.Fprint(w, "repo/issue not found")
+		fmt.Fprint(w, "repo/issue not found in database\n")
+		return
+	}
+
+	// 1. Check that issue is closed
+	ghIssue, _, err := gh.Issues.Get(ctx, owner, project, issueNo)
+	if err != nil {
+		log.Println(err)
+		fmt.Fprint(w, "invalid repo/issue\n")
+		return
+	}
+	if *ghIssue.State == "open" {
+		fmt.Fprint(w, "issue is still open\n")
 		return
 	}
 
 	// TODO
 	_ = seed
 	_ = address
-
-	// 1. Check that issue is closed
 
 	// 2. Lookup for pull request that was close this issue
 
