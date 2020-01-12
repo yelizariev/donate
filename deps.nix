@@ -3,9 +3,9 @@
     goPackagePath = "code.dumpstack.io/lib/cryptocurrency";
     fetch = {
       type = "git";
-      url = "https://code.dumpstack.io/lib/cryptocurrency";
-      rev = "f2f9d4e84174049905f3ba54ea7ec8c44fa7a64d";
-      sha256 = "10b2vg08jwm0pas8f6h64zaahm3d4qdagvkpcv5iykqblx3bmb9i";
+      url = "gitea@code.dumpstack.io:lib/cryptocurrency.git";
+      rev = "47594f50db5d6a24dfa0bf3d1698c53b7f509f9c";
+      sha256 = "1i6kb4gmjxxc3wllg1px1xqasyx1yaszp2mqaxzkdf9vd9jm40ss";
     };
   }
   {
