@@ -13,7 +13,8 @@ func createIssuesTable(db *sql.DB) (err error) {
 		repo		TEXT NON NULL,
 		issue		TEXT NON NULL,
 		bitcoin_seed	TEXT NON NULL UNIQUE,
-		bitcoin_address	TEXT NON NULL UNIQUE
+		bitcoin_address	TEXT NON NULL UNIQUE,
+		UNIQUE(repo, issue) ON CONFLICT ROLLBACK
 	)`)
 	return
 }
