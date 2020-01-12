@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -15,10 +16,13 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"code.dumpstack.io/lib/cryptocurrency"
+	"github.com/google/go-github/github"
 	_ "github.com/mattn/go-sqlite3"
+	"golang.org/x/oauth2"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
@@ -38,12 +42,28 @@ func parse(url *url.URL) (repo, issue string, err error) {
 	return
 }
 
-func queryHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
+	w http.ResponseWriter, r *http.Request) {
+
 	repo, issue, err := parse(r.URL)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+
+	if !strings.HasPrefix(repo, "github.com/") {
+		fmt.Fprint(w, "non-github repos are not supported yet\n")
+		return
+	}
+
+	fields := strings.Split(repo, "/")
+	if len(fields) != 3 {
+		fmt.Fprint(w, "invalid repo\n")
+		return
+	}
+	// fields[0] is 'github.com'
+	owner := fields[1]
+	project := fields[2]
 
 	if issue == "all" {
 		issues, err := issueAll(db, repo)
@@ -63,8 +83,9 @@ func queryHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = strconv.Atoi(issue) // just additional sanity check
+	issueNo, err := strconv.Atoi(issue)
 	if err != nil {
+		fmt.Fprint(w, "invalid issue\n")
 		log.Println(err)
 		return
 	}
@@ -75,6 +96,14 @@ func queryHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !exists {
+		// Check that issue is really exists on GitHub
+		_, _, err := gh.Issues.Get(ctx, owner, project, issueNo)
+		if err != nil {
+			log.Println(err)
+			fmt.Fprint(w, "invalid repo/issue\n")
+			return
+		}
+
 		seed, address, err := cryptocurrency.Bitcoin.GenWallet()
 		if err != nil {
 			log.Println(err)
@@ -96,7 +125,9 @@ func queryHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func payHandler(db *sql.DB, w http.ResponseWriter, r *http.Request) {
+func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
+	w http.ResponseWriter, r *http.Request) {
+
 	repo, issue, err := parse(r.URL)
 	if err != nil {
 		log.Println(err)
@@ -140,6 +171,7 @@ func main() {
 	app.Version("0.0.0")
 
 	database := app.Flag("database", "Path to database").Required().String()
+	token := app.Flag("token", "GitHub access token").Required().String()
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
@@ -148,12 +180,20 @@ func main() {
 		log.Fatal(err)
 	}
 
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: *token},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	client := github.NewClient(tc)
+
 	http.HandleFunc("/query", func(w http.ResponseWriter, r *http.Request) {
-		queryHandler(db, w, r)
+		queryHandler(db, client, ctx, w, r)
 	})
 
 	http.HandleFunc("/pay", func(w http.ResponseWriter, r *http.Request) {
-		payHandler(db, w, r)
+		payHandler(db, client, ctx, w, r)
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
