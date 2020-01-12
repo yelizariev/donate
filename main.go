@@ -71,7 +71,7 @@ func lookupPR(gh *github.Client, ctx context.Context,
 }
 
 func parseBTC(body string) (btc string) {
-	re := regexp.MustCompile("BTC{(.*)}")
+	re := regexp.MustCompile("BTC{([a-zA-Z0-9]*)}")
 	match := re.FindStringSubmatch(body)
 	if len(match) >= 2 {
 		btc = match[1]
@@ -232,6 +232,12 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 			log.Println("BTC:", btc)
 			break
 		}
+	}
+
+	valid, err := cryptocurrency.Bitcoin.Validate(btc)
+	if err != nil || !valid {
+		fmt.Fprint(w, "invalid bitcoin address\n")
+		return
 	}
 
 	if btc == "" {
