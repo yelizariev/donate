@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -38,6 +39,42 @@ func parse(url *url.URL) (repo, issue string, err error) {
 	values, ok = url.Query()["issue"]
 	if ok && len(values[0]) >= 1 {
 		issue = values[0]
+	}
+	return
+}
+
+func lookupPR(gh *github.Client, ctx context.Context,
+	owner, project, commit string) (body string, err error) {
+
+	pullRequests, _, err := gh.PullRequests.ListPullRequestsWithCommit(
+		ctx, owner, project, commit, nil)
+	if err != nil {
+		return
+	}
+
+	found := false
+	for _, pr := range pullRequests {
+		if pr.MergedAt == nil {
+			continue
+		}
+
+		found = true
+		body = *pr.Body
+		break
+	}
+
+	if !found {
+		err = errors.New("pull request with a merge commit not found")
+		return
+	}
+	return
+}
+
+func parseBTC(body string) (btc string) {
+	re := regexp.MustCompile("BTC{(.*)}")
+	match := re.FindStringSubmatch(body)
+	if len(match) >= 2 {
+		btc = match[1]
 	}
 	return
 }
@@ -172,17 +209,46 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		return
 	}
 
-	// TODO
-	_ = seed
-	_ = address
-
 	// 2. Lookup for pull request that was close this issue
+	events, _, err := gh.Issues.ListIssueEvents(ctx, owner, project, issueNo, nil)
+	if err != nil {
+		log.Println(err)
+		fmt.Fprint(w, "something went wrong\n")
+		return
+	}
 
-	// 3. Check that there's bitcoin address in pull request
-	//    a. If address exists just send all
-	//    b. If no address then send to random issue of the same project
+	btc := ""
+	for _, event := range events {
+		if event.CommitID != nil {
+			commit := *event.CommitID
 
-	fmt.Fprint(w, "not implemented yet")
+			// 3. Check that there's bitcoin address in pull request
+			body, err := lookupPR(gh, ctx, owner, project, commit)
+			if err != nil {
+				continue
+			}
+
+			btc = parseBTC(body)
+			log.Println("BTC:", btc)
+			break
+		}
+	}
+
+	if btc == "" {
+		// b. If no address then send to random issue of the same project
+		// TODO
+		return
+	}
+
+	// a. If address exists just send all
+	tx, err := cryptocurrency.Bitcoin.SendAll(seed, address)
+	if err != nil {
+		log.Println(err)
+		fmt.Fprint(w, "something went wrong\n")
+		return
+	}
+
+	fmt.Fprintf(w, "%s\n", tx)
 }
 
 func main() {
