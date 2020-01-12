@@ -90,7 +90,7 @@ func updateIssue(gh *github.Client, ctx context.Context,
 			found = true
 			comment := github.IssueComment{Body: &body}
 			_, _, err = gh.Issues.EditComment(ctx, owner, project,
-				int64(number), &comment)
+				*comment.ID, &comment)
 			if err != nil {
 				return
 			}
