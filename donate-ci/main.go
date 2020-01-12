@@ -1,0 +1,153 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"math/rand"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/google/go-github/v29/github"
+	"golang.org/x/oauth2"
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
+)
+
+func getAddr(gh *github.Client, ctx context.Context,
+	owner, project, endpoint string, issueNo int) (btc string, err error) {
+
+	url := fmt.Sprintf("%s/query?repo=github.com/%s/%s&issue=%d",
+		endpoint, owner, project, issueNo)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+
+	btc = string(bytes) // note that in next versions here will be JSON
+	btc = strings.TrimSpace(btc)
+	return
+}
+
+func updateIssue(gh *github.Client, ctx context.Context,
+	owner, project, endpoint string, issue *github.Issue) (err error) {
+
+	number := *issue.Number
+	btc, err := getAddr(gh, ctx, owner, project, endpoint, number)
+	if err != nil {
+		return
+	}
+
+	comments, _, err := gh.Issues.ListComments(ctx, owner, project, number, nil)
+
+	found := false
+	for _, comment := range comments {
+		if strings.Contains(*comment.Body, btc) {
+			found = true
+		}
+	}
+
+	if !found {
+		body := "address for donations: " + btc
+		comment := github.IssueComment{Body: &body}
+		_, _, err = gh.Issues.CreateComment(ctx, owner, project, number, &comment)
+		if err != nil {
+			return
+		}
+	}
+
+	// TODO update label with donation amount
+	return
+}
+
+func triggerPayout(gh *github.Client, ctx context.Context,
+	owner, project, endpoint string, issue *github.Issue) (err error) {
+
+	url := fmt.Sprintf("%s/pay?repo=github.com/%s/%s&issue=%d",
+		endpoint, owner, project, *issue.Number)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	return
+}
+
+func walkIssue(gh *github.Client, ctx context.Context,
+	owner, project, endpoint string, issue *github.Issue) (err error) {
+
+	if issue.ClosedAt != nil {
+		if issue.ClosedAt.Before(time.Now().Add(-24 * time.Hour)) {
+			// ignore issues that have closed more than one day ago
+			return
+		}
+	}
+
+	if *issue.State == "open" {
+		err = updateIssue(gh, ctx, owner, project, endpoint, issue)
+	} else {
+		err = triggerPayout(gh, ctx, owner, project, endpoint, issue)
+	}
+	return
+}
+
+func walk(gh *github.Client, ctx context.Context, repo, endpoint string) (err error) {
+	// GITHUB_REPOSITORY=jollheef/test-repo-please-ignore
+	fields := strings.Split(repo, "/")
+	if len(fields) != 2 {
+		err = errors.New("invalid repo")
+		return
+	}
+	owner := fields[0]
+	project := fields[1]
+
+	options := github.IssueListByRepoOptions{State: "all"}
+	issues, _, err := gh.Issues.ListByRepo(ctx, owner, project, &options)
+	for _, issue := range issues {
+		err = walkIssue(gh, ctx, owner, project, endpoint, issue)
+		if err != nil {
+			log.Println(err)
+			err = nil // do not exit
+		}
+	}
+	return
+}
+
+func main() {
+	log.SetFlags(log.Lshortfile)
+	rand.Seed(time.Now().UnixNano())
+
+	app := kingpin.New("donate-ci", "cryptocurrency donation CI cli")
+	app.Author("Mikhail Klementev <root@dumpstack.io>")
+	app.Version("0.0.0")
+
+	token := app.Flag("token", "GitHub access token").Envar("GITHUB_TOKEN").Required().String()
+	repo := app.Flag("repo", "GitHub repository").Envar("GITHUB_REPOSITORY").Required().String()
+	endpoint := app.Flag("endpoint", "URL of donation server").Envar("DONATE_ENDPOINT").Default("https://donate.dumpstack.io").String()
+
+	kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: *token},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+
+	gh := github.NewClient(tc)
+
+	err := walk(gh, ctx, *repo, *endpoint)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
