@@ -13,6 +13,7 @@ Goals:
 - Multiple hosting (so far GitHub only).
 
 How it works:
+
 0. (optional) The owner of the repository does setting up a donation daemon.
 1. The owner of the repository adds GitHub action (it's the easiest way to work with GitHub).
 2. Someone opens an issue, then GitHub action shows cryptocurrency addresses (and updates from time to time).
