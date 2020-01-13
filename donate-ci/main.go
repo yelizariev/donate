@@ -205,7 +205,7 @@ func main() {
 
 	app := kingpin.New("donate-ci", "cryptocurrency donation CI cli")
 	app.Author("Mikhail Klementev <root@dumpstack.io>")
-	app.Version("1.0.0")
+	app.Version("1.0.1")
 
 	token := app.Flag("token", "GitHub access token").Envar("GITHUB_TOKEN").Required().String()
 	repo := app.Flag("repo", "GitHub repository").Envar("GITHUB_REPOSITORY").Required().String()
