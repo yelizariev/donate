@@ -19,8 +19,7 @@ How it works:
 2. Someone opens an issue, then GitHub action shows cryptocurrency addresses (and updates from time to time).
 3. Someone solves the issue, adds to commit message `Fixes #N`, then put to pull request his BTC address in the format `BTC{address}`. (later, when the support of multiple cryptocurrencies will be ready, he'll need to put addresses of all cryptocurrencies that he want to acquire).
 4. GitHub Action triggers payout on donation daemon.
-
-Note: case, when no one acquires money, is not implemented yet. I have some thoughts on how it should look, but right now it should be considered as a donation to this project itself.
+5. If no one acquired money then payout going to donation address (default is donating to this project).
 
 ## API
 

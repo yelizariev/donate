@@ -161,7 +161,7 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 }
 
 func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
-	w http.ResponseWriter, r *http.Request) {
+	w http.ResponseWriter, r *http.Request, donationAddress string) {
 
 	repo, issue, err := parse(r.URL)
 	if err != nil {
@@ -238,14 +238,19 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		return
 	}
 
+	var tx string
 	if btc == "" || btc == address {
-		// b. If no address then send to random issue of the same project
-		// TODO
+		// b. If no address then send to the donation address
+		tx, err = cryptocurrency.Bitcoin.SendAll(seed, btc)
+		if err != nil {
+			log.Println(err)
+			fmt.Fprint(w, "something went wrong\n")
+		}
 		return
 	}
 
 	// a. If address exists just send all
-	tx, err := cryptocurrency.Bitcoin.SendAll(seed, btc)
+	tx, err = cryptocurrency.Bitcoin.SendAll(seed, btc)
 	if err != nil {
 		log.Println(err)
 		fmt.Fprint(w, "something went wrong\n")
@@ -265,7 +270,11 @@ func main() {
 
 	database := app.Flag("database", "Path to database").Required().String()
 	token := app.Flag("token", "GitHub access token").Required().String()
-
+	donationAddress := app.Flag("donation-address",
+		"Set the address to which any not acquired donation will be sent").Envar(
+		"DONATION_ADDRESS").Default(
+		// default donation address is donating to this project
+		"bc1q23fyuq7kmngrgqgp6yq9hk8a5q460f39m8nv87").String()
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
 	db, err := openDatabase(*database)
@@ -286,7 +295,7 @@ func main() {
 	})
 
 	http.HandleFunc("/pay", func(w http.ResponseWriter, r *http.Request) {
-		payHandler(db, client, ctx, w, r)
+		payHandler(db, client, ctx, w, r, *donationAddress)
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
