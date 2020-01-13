@@ -79,6 +79,10 @@ func getAddr(gh *github.Client, ctx context.Context,
 
 	btc = string(bytes) // note that in next versions here will be JSON
 	btc = strings.TrimSpace(btc)
+
+	if btc == "" {
+		err = errors.New("no BTC address returned")
+	}
 	return
 }
 
