@@ -15,7 +15,7 @@ Goals:
 How it works:
 
 0. (optional) The owner of the repository does setting up a donation daemon.
-1. The owner of the repository adds GitHub action (it's the easiest way to work with GitHub).
+1. The owner of the repository adds [GitHub action](.github/workflows/donate.yml) (it's the easiest way to work with GitHub).
 2. Someone opens an issue, then GitHub action shows cryptocurrency addresses (and updates from time to time).
 3. Someone solves the issue, adds to commit message `Fixes #N`, then put to pull request his BTC address in the format `BTC{address}`. (later, when the support of multiple cryptocurrencies will be ready, he'll need to put addresses of all cryptocurrencies that he want to acquire).
 4. GitHub Action triggers payout on donation daemon.
