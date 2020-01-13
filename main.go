@@ -238,7 +238,7 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		return
 	}
 
-	if btc == "" {
+	if btc == "" || btc == address {
 		// b. If no address then send to random issue of the same project
 		// TODO
 		return
