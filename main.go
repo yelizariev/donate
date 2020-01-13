@@ -241,7 +241,7 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	var tx string
 	if btc == "" || btc == address {
 		// b. If no address then send to the donation address
-		tx, err = cryptocurrency.Bitcoin.SendAll(seed, btc)
+		tx, err = cryptocurrency.Bitcoin.SendAll(seed, donationAddress)
 		if err != nil {
 			log.Println(err)
 			fmt.Fprint(w, "something went wrong\n")
