@@ -30,4 +30,4 @@ jobs:
     - name: Build
       run: |
         . ~/.nix-profile/etc/profile.d/nix.sh
-        sudo -E nix-build --sandbox
+        nix-build
