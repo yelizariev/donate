@@ -269,7 +269,7 @@ func main() {
 	app.Version("1.0.1")
 
 	database := app.Flag("database", "Path to database").Required().String()
-	token := app.Flag("token", "GitHub access token").Required().String()
+	token := app.Flag("token", "GitHub access token").Envar("GITHUB_TOKEN").Required().String()
 	donationAddress := app.Flag("donation-address",
 		"Set the address to which any not acquired donation will be sent").Envar(
 		"DONATION_ADDRESS").Default(
