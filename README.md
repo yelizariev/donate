@@ -21,6 +21,8 @@ How it works:
 4. GitHub Action triggers payout on donation daemon.
 5. If no one acquired money then payout going to donation address (default is donating to this project).
 
+This project uses [Semantic Versioning](https://semver.org/).
+
 ## API
 
 Query donation address for issue:
