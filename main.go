@@ -268,7 +268,7 @@ func main() {
 	app.Author("Mikhail Klementev <root@dumpstack.io>")
 	app.Version("1.0.1")
 
-	database := app.Flag("database", "Path to database").Required().String()
+	database := app.Flag("database", "Path to database").Envar("DONATE_DB_PATH").Required().String()
 	token := app.Flag("token", "GitHub access token").Envar("GITHUB_TOKEN").Required().String()
 	donationAddress := app.Flag("donation-address",
 		"Set the address to which any not acquired donation will be sent").Envar(
