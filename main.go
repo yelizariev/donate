@@ -212,12 +212,14 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	}
 
 	btc := ""
+	found := false
 	for _, event := range events {
 		if event.CommitID != nil {
 			commit := *event.CommitID
 
 			// 3. Check that there's bitcoin address in pull request
-			body, found, err := lookupPR(gh, ctx, owner, project, commit)
+			var body string
+			body, found, err = lookupPR(gh, ctx, owner, project, commit)
 			if err != nil {
 				return
 			}
@@ -232,14 +234,16 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		}
 	}
 
-	valid, err := cryptocurrency.Bitcoin.Validate(btc)
-	if err != nil || !valid {
-		fmt.Fprint(w, "invalid bitcoin address\n")
-		return
+	if found {
+		valid, err := cryptocurrency.Bitcoin.Validate(btc)
+		if err != nil || !valid {
+			fmt.Fprint(w, "invalid bitcoin address\n")
+			return
+		}
 	}
 
 	var tx string
-	if btc == "" || btc == address {
+	if !found || btc == address {
 		// b. If no address then send to the donation address
 		tx, err = cryptocurrency.Bitcoin.SendAll(seed, donationAddress)
 		if err != nil {
