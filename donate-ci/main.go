@@ -104,8 +104,10 @@ func updateIssue(gh *github.Client, ctx context.Context,
 		if strings.Contains(*comment.Body, btc) {
 			found = true
 			newcomment := github.IssueComment{Body: &body}
-			_, _, err = gh.Issues.EditComment(ctx, owner, project,
-				*comment.ID, &newcomment)
+			if !dryRun {
+				_, _, err = gh.Issues.EditComment(ctx,
+					owner, project, *comment.ID, &newcomment)
+			}
 			if err != nil {
 				return
 			}
@@ -114,7 +116,10 @@ func updateIssue(gh *github.Client, ctx context.Context,
 
 	if !found {
 		comment := github.IssueComment{Body: &body}
-		_, _, err = gh.Issues.CreateComment(ctx, owner, project, number, &comment)
+		if !dryRun {
+			_, _, err = gh.Issues.CreateComment(ctx,
+				owner, project, number, &comment)
+		}
 		if err != nil {
 			return
 		}
@@ -199,6 +204,8 @@ func walk(gh *github.Client, ctx context.Context, repo, endpoint string) (err er
 	return
 }
 
+var dryRun = false
+
 func main() {
 	log.SetFlags(log.Lshortfile)
 	rand.Seed(time.Now().UnixNano())
@@ -210,8 +217,11 @@ func main() {
 	token := app.Flag("token", "GitHub access token").Envar("GITHUB_TOKEN").Required().String()
 	repo := app.Flag("repo", "GitHub repository").Envar("GITHUB_REPOSITORY").Required().String()
 	endpoint := app.Flag("endpoint", "URL of donation server").Envar("DONATE_ENDPOINT").Default("https://donate.dumpstack.io").String()
+	dry := app.Flag("dry-run", "Do not post any comments").Default("false").Bool()
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	dryRun = *dry
 
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
