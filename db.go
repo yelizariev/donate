@@ -12,15 +12,30 @@ func createIssuesTable(db *sql.DB) (err error) {
 		id		INTEGER PRIMARY KEY,
 		repo		TEXT NON NULL,
 		issue		TEXT NON NULL,
-		bitcoin_seed	TEXT NON NULL UNIQUE,
-		bitcoin_address	TEXT NON NULL UNIQUE,
 		UNIQUE(repo, issue) ON CONFLICT ROLLBACK
+	)`)
+	return
+}
+
+func createWalletsTable(db *sql.DB) (err error) {
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS wallets (
+		id		INTEGER PRIMARY KEY,
+		issue_id	INTEGER,
+		symbol		TEXT NON NULL,
+		seed		TEXT NON NULL UNIQUE,
+		address		TEXT NON NULL UNIQUE
 	)`)
 	return
 }
 
 func createSchema(db *sql.DB) (err error) {
 	err = createIssuesTable(db)
+	if err != nil {
+		return
+	}
+
+	err = createWalletsTable(db)
 	if err != nil {
 		return
 	}
@@ -43,16 +58,42 @@ func openDatabase(path string) (db *sql.DB, err error) {
 }
 
 func issueGet(db *sql.DB, repo, issue string) (seed, addr string, err error) {
-	query := "SELECT bitcoin_seed, bitcoin_address " +
-		"FROM issues " +
-		"WHERE repo=? AND issue=?"
-	stmt, err := db.Prepare(query)
+	tx, err := db.Begin()
 	if err != nil {
+		return
+	}
+
+	query := "SELECT id FROM issues WHERE repo=? AND issue=?"
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		tx.Rollback()
 		return
 	}
 	defer stmt.Close()
 
-	err = stmt.QueryRow(repo, issue).Scan(&seed, &addr)
+	var issueID int
+	err = stmt.QueryRow(repo, issue).Scan(&issueID)
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+
+	query = "SELECT seed, address FROM wallets " +
+		"WHERE issue_id=? AND symbol='btc'"
+	stmt, err = tx.Prepare(query)
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+	defer stmt.Close()
+
+	err = stmt.QueryRow(issueID).Scan(&seed, &addr)
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+
+	tx.Commit()
 	return
 }
 
@@ -71,16 +112,48 @@ func issueExists(db *sql.DB, repo, issue string) (exists bool, err error) {
 }
 
 func issueAdd(db *sql.DB, repo, issue, seed, address string) (err error) {
-	query := "INSERT INTO issues " +
-		"(repo, issue, bitcoin_seed, bitcoin_address) " +
-		"VALUES (?, ?, ?, ?)"
-	stmt, err := db.Prepare(query)
+	tx, err := db.Begin()
 	if err != nil {
+		return
+	}
+
+	query := "INSERT INTO issues (repo, issue) VALUES (?, ?)"
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		tx.Rollback()
 		return
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(repo, issue, seed, address)
+	res, err := stmt.Exec(repo, issue)
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+
+	query = "INSERT INTO wallets " +
+		"(issue_id, symbol, seed, address) " +
+		"VALUES (?, ?, ?, ?)"
+	stmt, err = tx.Prepare(query)
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(id, "btc", seed, address)
+	if err != nil {
+		tx.Rollback()
+		return
+	}
+
+	tx.Commit()
 	return
 }
 
@@ -89,29 +162,53 @@ type issuePublicInfo struct {
 }
 
 func issueAll(db *sql.DB, repo string) (issues []issuePublicInfo, err error) {
-	query := "SELECT issue, bitcoin_address " +
-		"FROM issues " +
-		"WHERE repo = ?"
-	stmt, err := db.Prepare(query)
+	tx, err := db.Begin()
 	if err != nil {
+		return
+	}
+
+	query := "SELECT id, issue FROM issues WHERE repo = ?"
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		tx.Rollback()
 		return
 	}
 	defer stmt.Close()
 
 	rows, err := stmt.Query(repo)
 	if err != nil {
+		tx.Rollback()
 		return
 	}
 	defer rows.Close()
 
 	for rows.Next() {
 		issue := issuePublicInfo{}
-		err = rows.Scan(&issue.Issue, &issue.Address)
+		var issueID int
+		err = rows.Scan(&issueID, &issue.Issue)
 		if err != nil {
+			tx.Rollback()
+			return
+		}
+
+		query = "SELECT address FROM wallets WHERE issue_id = ?"
+		stmt, err = tx.Prepare(query)
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+
+		defer stmt.Close()
+
+		err = stmt.QueryRow(issueID).Scan(&issue.Address)
+		if err != nil {
+			tx.Rollback()
 			return
 		}
 
 		issues = append(issues, issue)
 	}
+
+	tx.Commit()
 	return
 }
