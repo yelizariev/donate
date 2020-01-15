@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/google/go-github/v29/github"
-	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/oauth2"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
+
+	"code.dumpstack.io/tools/donate/database"
 )
 
 func main() {
@@ -26,7 +27,7 @@ func main() {
 	app.Author("Mikhail Klementev <root@dumpstack.io>")
 	app.Version("2.0.0")
 
-	database := app.Flag("database", "Path to database").Envar("DONATE_DB_PATH").Required().String()
+	databasePath := app.Flag("database", "Path to database").Envar("DONATE_DB_PATH").Required().String()
 	token := app.Flag("token", "GitHub access token").Envar("GITHUB_TOKEN").Required().String()
 	donationAddress := app.Flag("donation-address",
 		"Set the address to which any not acquired donation will be sent").Envar(
@@ -35,7 +36,7 @@ func main() {
 		"bc1q23fyuq7kmngrgqgp6yq9hk8a5q460f39m8nv87").String()
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	db, err := openDatabase(*database)
+	db, err := database.Open(*databasePath)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -16,6 +16,8 @@ import (
 
 	"code.dumpstack.io/lib/cryptocurrency"
 	"github.com/google/go-github/v29/github"
+
+	"code.dumpstack.io/tools/donate/database"
 )
 
 func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
@@ -42,7 +44,7 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	project := fields[2]
 
 	if issue == "all" {
-		issues, err := issueAll(db, repo)
+		issues, err := database.IssueAll(db, repo)
 		if err != nil {
 			log.Println(err)
 			return
@@ -66,7 +68,7 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		return
 	}
 
-	exists, err := issueExists(db, repo, issue)
+	exists, err := database.IssueExists(db, repo, issue)
 	if err != nil {
 		log.Println(err)
 		return
@@ -90,7 +92,7 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 			return
 		}
 
-		err = issueAdd(db, repo, issue, seed, address)
+		err = database.IssueAdd(db, repo, issue, seed, address)
 		if err != nil {
 			log.Println(err)
 			return
@@ -100,7 +102,7 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		return
 	}
 
-	_, address, err := issueGet(db, repo, issue)
+	_, address, err := database.IssueGet(db, repo, issue)
 	fmt.Fprintf(w, "%s\n", address)
 	return
 }

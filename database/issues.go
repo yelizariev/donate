@@ -2,62 +2,11 @@
 // Use of this source code is governed by a AGPLv3 license
 // (or later) that can be found in the LICENSE file.
 
-package main
+package database
 
 import "database/sql"
 
-func createIssuesTable(db *sql.DB) (err error) {
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS issues (
-		id		INTEGER PRIMARY KEY,
-		repo		TEXT NON NULL,
-		issue		TEXT NON NULL,
-		UNIQUE(repo, issue) ON CONFLICT ROLLBACK
-	)`)
-	return
-}
-
-func createWalletsTable(db *sql.DB) (err error) {
-	_, err = db.Exec(`
-	CREATE TABLE IF NOT EXISTS wallets (
-		id		INTEGER PRIMARY KEY,
-		issue_id	INTEGER,
-		symbol		TEXT NON NULL,
-		seed		TEXT NON NULL UNIQUE,
-		address		TEXT NON NULL UNIQUE
-	)`)
-	return
-}
-
-func createSchema(db *sql.DB) (err error) {
-	err = createIssuesTable(db)
-	if err != nil {
-		return
-	}
-
-	err = createWalletsTable(db)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func openDatabase(path string) (db *sql.DB, err error) {
-	db, err = sql.Open("sqlite3", path)
-	if err != nil {
-		return
-	}
-
-	err = createSchema(db)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func issueGet(db *sql.DB, repo, issue string) (seed, addr string, err error) {
+func IssueGet(db *sql.DB, repo, issue string) (seed, addr string, err error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return
@@ -97,7 +46,7 @@ func issueGet(db *sql.DB, repo, issue string) (seed, addr string, err error) {
 	return
 }
 
-func issueExists(db *sql.DB, repo, issue string) (exists bool, err error) {
+func IssueExists(db *sql.DB, repo, issue string) (exists bool, err error) {
 	query := "SELECT EXISTS(" +
 		"SELECT id FROM issues WHERE repo=? AND issue=?" +
 		")"
@@ -111,7 +60,7 @@ func issueExists(db *sql.DB, repo, issue string) (exists bool, err error) {
 	return
 }
 
-func issueAdd(db *sql.DB, repo, issue, seed, address string) (err error) {
+func IssueAdd(db *sql.DB, repo, issue, seed, address string) (err error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return
@@ -157,11 +106,7 @@ func issueAdd(db *sql.DB, repo, issue, seed, address string) (err error) {
 	return
 }
 
-type issuePublicInfo struct {
-	Issue, Address string
-}
-
-func issueAll(db *sql.DB, repo string) (issues []issuePublicInfo, err error) {
+func IssueAll(db *sql.DB, repo string) (issues []issuePublicInfo, err error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return

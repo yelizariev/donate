@@ -16,6 +16,8 @@ import (
 
 	"code.dumpstack.io/lib/cryptocurrency"
 	"github.com/google/go-github/v29/github"
+
+	"code.dumpstack.io/tools/donate/database"
 )
 
 func lookupPR(gh *github.Client, ctx context.Context,
@@ -72,7 +74,7 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	owner := fields[1]
 	project := fields[2]
 
-	seed, address, err := issueGet(db, repo, issue)
+	seed, address, err := database.IssueGet(db, repo, issue)
 	if err != nil {
 		log.Println(err)
 		fmt.Fprint(w, "repo/issue not found in database\n")
