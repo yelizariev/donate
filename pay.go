@@ -127,7 +127,7 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	events, _, err := gh.Issues.ListIssueEvents(ctx, owner, project, issue.ID, nil)
 	if err != nil {
 		log.Println(err)
-		fmt.Fprint(w, "something went wrong\n")
+		fmt.Fprint(w, "{}")
 		return
 	}
 
@@ -193,9 +193,8 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		if valid {
 			tx, err := wallet.Type.SendAll(wallet.Seed, wallet.Address)
 			if err != nil {
+				log.Println("sendall error", err)
 				err = nil
-				log.Println(err)
-				fmt.Fprint(w, "something went wrong\n")
 			}
 			transactions[wallet.Type] = tx
 		}
