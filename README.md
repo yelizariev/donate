@@ -9,7 +9,7 @@ Goals:
 - KISS.
 - Zero-fee (the fee is voluntary as a donation to the project).
 - Self-hosted.
-- Multiple cryptocurrencies (so far it supports BTC but it's easy to add others).
+- Multiple cryptocurrencies.
 - Multiple hosting (so far GitHub only).
 
 How it works:
@@ -29,7 +29,7 @@ Query donation address for issue:
 
     curl -s 'https://donate.dumpstack.io/query?repo=github.com/jollheef/appvm&issue=3'
 
-List all issues with cryptocurrency wallets (right now only BTC) address for repo:
+List all issues with cryptocurrency wallets address for repo:
 
     curl -s 'https://donate.dumpstack.io/query?repo=github.com/jollheef/appvm' | json_pp
 
