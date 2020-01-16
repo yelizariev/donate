@@ -106,6 +106,10 @@ func triggerPayout(gh *github.Client, ctx context.Context,
 		return
 	}
 
+	if len(transactions) == 0 {
+		return
+	}
+
 	body := "Payout transactions:\n"
 	for cc, tx := range transactions {
 		var api string
