@@ -110,8 +110,14 @@ func triggerPayout(gh *github.Client, ctx context.Context,
 		return
 	}
 
-	body := "Payout transactions:\n"
+	var body string
+	valid := false
 	for cc, tx := range transactions {
+		if tx == "" {
+			continue
+		}
+		valid = true
+
 		var api string
 		switch cc {
 		case c.Bitcoin:
@@ -126,12 +132,16 @@ func triggerPayout(gh *github.Client, ctx context.Context,
 		body += fmt.Sprintf("- %s: [%s](%s/%s)\n", symbol, tx, api, tx)
 	}
 
+	if !valid {
+		log.Println("no valid transactions found")
+		return
+	}
+
+	body = "Payout transactions:\n" + body
+
 	number := *issue.Number
 	comment := github.IssueComment{Body: &body}
 	_, _, err = gh.Issues.CreateComment(ctx, owner, project, number, &comment)
-	if err != nil {
-		return
-	}
 	return
 }
 
