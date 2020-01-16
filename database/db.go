@@ -45,7 +45,7 @@ func createIssuesTable(db *sql.DB) (err error) {
 	CREATE TABLE IF NOT EXISTS issues (
 		id		INTEGER PRIMARY KEY,
 		repo		TEXT NON NULL,
-		issue		TEXT NON NULL,
+		issue		INTEGER NON NULL,
 		UNIQUE(repo, issue) ON CONFLICT ROLLBACK
 	)`)
 	return
