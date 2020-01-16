@@ -160,12 +160,13 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 			address := defaultDests[wallet.Type]
 			// Note that we're getting seed from the issue' wallet
 			seed := issue.Wallets[wallet.Type].Seed
-			_, err := wallet.Type.SendAll(seed, address)
+			tx, err := wallet.Type.SendAll(seed, address)
 			if err != nil {
 				err = nil
 				log.Println("sendall error", err)
 			}
-			// We also don't show this transaction to user, to
+			log.Print("tx -> default dest:", tx)
+			// We don't show this transaction to user, to
 			// avoid confusion. Of course, those transactions
 			// are shown in the blockchain explorer, if someone
 			// wants to know.
