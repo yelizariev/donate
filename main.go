@@ -26,7 +26,7 @@ func main() {
 
 	app := kingpin.New("donate", "cryptocurrency donation daemon")
 	app.Author("Mikhail Klementev <root@dumpstack.io>")
-	app.Version("2.0.0")
+	app.Version("3.0.0")
 
 	databasePath := app.Flag("database", "Path to database").Envar("DONATE_DB_PATH").Required().String()
 	token := app.Flag("token", "GitHub access token").Envar("GITHUB_TOKEN").Required().String()
