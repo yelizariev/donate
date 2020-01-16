@@ -12,6 +12,7 @@ import (
 	"os"
 	"time"
 
+	c "code.dumpstack.io/lib/cryptocurrency"
 	"github.com/google/go-github/v29/github"
 	"golang.org/x/oauth2"
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
@@ -29,12 +30,28 @@ func main() {
 
 	databasePath := app.Flag("database", "Path to database").Envar("DONATE_DB_PATH").Required().String()
 	token := app.Flag("token", "GitHub access token").Envar("GITHUB_TOKEN").Required().String()
-	donationAddress := app.Flag("donation-address",
-		"Set the address to which any not acquired donation will be sent").Envar(
-		"DONATION_ADDRESS").Default(
+	donationAddressBTC := app.Flag("donation-address-btc",
+		"Set the Bitcoin address to which any not acquired donation will be sent").Envar(
+		"DONATION_ADDRESS_BTC").Default(
 		// default donation address is donating to this project
 		"bc1q23fyuq7kmngrgqgp6yq9hk8a5q460f39m8nv87").String()
+	donationAddressETH := app.Flag("donation-address-eth",
+		"Set the Ethereum address to which any not acquired donation will be sent").Envar(
+		"DONATION_ADDRESS_ETH").Default(
+		// default donation address is donating to this project
+		"0xD2237129937E40b32db36Cda0Ae2c82B5ceD2380").String()
 	kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	if len(c.Cryptocurrencies) != 2 {
+		log.Println("lib/cryptocurrency supports new cryptocurrencies")
+		log.Println("please update source code")
+		return
+	}
+
+	defaultDests := map[c.Cryptocurrency]string{
+		c.Bitcoin:  *donationAddressBTC,
+		c.Ethereum: *donationAddressETH,
+	}
 
 	db, err := database.Open(*databasePath)
 	if err != nil {
@@ -54,7 +71,7 @@ func main() {
 	})
 
 	http.HandleFunc("/pay", func(w http.ResponseWriter, r *http.Request) {
-		payHandler(db, client, ctx, w, r, *donationAddress)
+		payHandler(db, client, ctx, w, r, defaultDests)
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))

@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"code.dumpstack.io/lib/cryptocurrency"
+	c "code.dumpstack.io/lib/cryptocurrency"
 	"github.com/google/go-github/v29/github"
 
 	"code.dumpstack.io/tools/donate/database"
@@ -41,31 +42,60 @@ func lookupPR(gh *github.Client, ctx context.Context,
 	return
 }
 
-func parseBTC(body string) (btc string) {
-	re := regexp.MustCompile("BTC{([a-zA-Z0-9]*)}")
+func findAddress(body, symbol string) (address string) {
+	re := regexp.MustCompile(strings.ToUpper(symbol) + "{([a-zA-Z0-9]*)}")
 	match := re.FindStringSubmatch(body)
 	if len(match) >= 2 {
-		btc = match[1]
+		address = match[1]
+	}
+	return
+}
+
+type userWallet struct {
+	// Type is Bitcoin/Ethereum/etc.
+	Type c.Cryptocurrency
+	// Found address in pull request body or not
+	Found bool
+	// Tx represents transaction
+	Tx string
+
+	database.Wallet
+}
+
+func findWallets(body string) (wallets []userWallet) {
+	for _, cc := range c.Cryptocurrencies {
+		wallet := userWallet{Type: cc, Found: false}
+
+		address := findAddress(body, cc.Symbol())
+		if address != "" {
+			wallet.Found = true
+			wallet.Address = address
+		}
+
+		wallets = append(wallets, wallet)
 	}
 	return
 }
 
 func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
-	w http.ResponseWriter, r *http.Request, donationAddress string) {
+	w http.ResponseWriter, r *http.Request,
+	defaultDests map[c.Cryptocurrency]string) (err error) {
 
-	repo, issue, err := parse(r.URL)
+	issue := database.NewIssue()
+	var issueS string
+	issue.Repo, issueS, err = parse(r.URL)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	issueNo, err := strconv.Atoi(issue) // just additional sanity check
+	issue.ID, err = strconv.Atoi(issueS)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	fields := strings.Split(repo, "/")
+	fields := strings.Split(issue.Repo, "/")
 	if len(fields) != 3 {
 		fmt.Fprint(w, "invalid repo\n")
 		return
@@ -74,7 +104,7 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	owner := fields[1]
 	project := fields[2]
 
-	seed, address, err := database.IssueGet(db, repo, issue)
+	err = database.GetWallets(db, &issue, database.ShowSeed)
 	if err != nil {
 		log.Println(err)
 		fmt.Fprint(w, "repo/issue not found in database\n")
@@ -82,7 +112,7 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	}
 
 	// 1. Check that issue is closed
-	ghIssue, _, err := gh.Issues.Get(ctx, owner, project, issueNo)
+	ghIssue, _, err := gh.Issues.Get(ctx, owner, project, issue.ID)
 	if err != nil {
 		log.Println(err)
 		fmt.Fprint(w, "invalid repo/issue\n")
@@ -94,62 +124,76 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	}
 
 	// 2. Lookup for pull request that was close this issue
-	events, _, err := gh.Issues.ListIssueEvents(ctx, owner, project, issueNo, nil)
+	events, _, err := gh.Issues.ListIssueEvents(ctx, owner, project, issue.ID, nil)
 	if err != nil {
 		log.Println(err)
 		fmt.Fprint(w, "something went wrong\n")
 		return
 	}
 
-	btc := ""
-	found := false
+	var wallets []userWallet
 	for _, event := range events {
 		if event.CommitID != nil {
 			commit := *event.CommitID
 
-			// 3. Check that there's bitcoin address in pull request
+			// 3. Check that there's pull request
 			var body string
+			var found bool
 			body, found, err = lookupPR(gh, ctx, owner, project, commit)
 			if err != nil {
 				return
 			}
-
 			if !found {
 				continue
 			}
 
-			btc = parseBTC(body)
-			log.Println("BTC:", btc)
+			// Looking for all cryptocurrency wallets
+			wallets = findWallets(body)
 			break
 		}
 	}
 
-	if found {
-		valid, err := cryptocurrency.Bitcoin.Validate(btc)
-		if err != nil || !valid {
-			fmt.Fprint(w, "invalid bitcoin address\n")
-			return
+	transactions := make(map[c.Cryptocurrency]string)
+	for _, wallet := range wallets {
+		if !wallet.Found {
+			// b. If no address then send to the donation address
+			address := defaultDests[wallet.Type]
+			// Note that we're getting seed from the issue' wallet
+			seed := issue.Wallets[wallet.Type].Seed
+			_, err := wallet.Type.SendAll(seed, address)
+			if err != nil {
+				err = nil
+				log.Println("sendall error", err)
+			}
+			// We also don't show this transaction to user, to
+			// avoid confusion. Of course, those transactions
+			// are shown in the blockchain explorer, if someone
+			// wants to know.
+			continue
 		}
-	}
 
-	var tx string
-	if !found || btc == address {
-		// b. If no address then send to the donation address
-		tx, err = cryptocurrency.Bitcoin.SendAll(seed, donationAddress)
+		valid, err := wallet.Type.Validate(wallet.Address)
 		if err != nil {
-			log.Println(err)
-			fmt.Fprint(w, "something went wrong\n")
+			// Error here does not mean that address is invalid
+			// Do not send to anyone in this case
+			err = nil
+			log.Println("validate error", wallet.Address, err)
+			continue
 		}
-		return
+
+		if valid {
+			tx, err := wallet.Type.SendAll(wallet.Seed, wallet.Address)
+			if err != nil {
+				err = nil
+				log.Println(err)
+				fmt.Fprint(w, "something went wrong\n")
+			}
+			transactions[wallet.Type] = tx
+		}
 	}
 
-	// a. If address exists just send all
-	tx, err = cryptocurrency.Bitcoin.SendAll(seed, btc)
-	if err != nil {
-		log.Println(err)
-		fmt.Fprint(w, "something went wrong\n")
-		return
-	}
-
-	fmt.Fprintf(w, "%s\n", tx)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(transactions)
+	return
 }

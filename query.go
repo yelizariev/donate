@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"code.dumpstack.io/lib/cryptocurrency"
+	c "code.dumpstack.io/lib/cryptocurrency"
 	"github.com/google/go-github/v29/github"
 
 	"code.dumpstack.io/tools/donate/database"
@@ -23,18 +23,22 @@ import (
 func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	w http.ResponseWriter, r *http.Request) {
 
-	repo, issue, err := parse(r.URL)
+	var err error
+
+	issue := database.NewIssue()
+	var issueS string
+	issue.Repo, issueS, err = parse(r.URL)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	if !strings.HasPrefix(repo, "github.com/") {
+	if !strings.HasPrefix(issue.Repo, "github.com/") {
 		fmt.Fprint(w, "non-github repos are not supported yet\n")
 		return
 	}
 
-	fields := strings.Split(repo, "/")
+	fields := strings.Split(issue.Repo, "/")
 	if len(fields) != 3 {
 		fmt.Fprint(w, "invalid repo\n")
 		return
@@ -43,14 +47,16 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	owner := fields[1]
 	project := fields[2]
 
-	if issue == "all" {
-		issues, err := database.IssueAll(db, repo)
+	if issueS == "all" {
+		var issues []database.Issue
+		issues, err = database.AllIssues(db, issue.Repo, database.HideSeed)
 		if err != nil {
 			log.Println(err)
 			return
 		}
 
-		js, err := json.Marshal(issues)
+		var js []byte
+		js, err = json.Marshal(issues)
 		if err != nil {
 			log.Println(err)
 			return
@@ -61,21 +67,21 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		return
 	}
 
-	issueNo, err := strconv.Atoi(issue)
+	issue.ID, err = strconv.Atoi(issueS)
 	if err != nil {
 		fmt.Fprint(w, "invalid issue\n")
 		log.Println(err)
 		return
 	}
 
-	exists, err := database.IssueExists(db, repo, issue)
+	exists, err := database.IsExists(db, issue)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 	if !exists {
 		// Check that issue is really exists on GitHub
-		ghIssue, _, err := gh.Issues.Get(ctx, owner, project, issueNo)
+		ghIssue, _, err := gh.Issues.Get(ctx, owner, project, issue.ID)
 		if err != nil {
 			log.Println(err)
 			fmt.Fprint(w, "invalid repo/issue\n")
@@ -86,23 +92,37 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 			return
 		}
 
-		seed, address, err := cryptocurrency.Bitcoin.GenWallet()
+		for _, cc := range c.Cryptocurrencies {
+			seed, address, err := cc.GenWallet()
+			if err != nil {
+				log.Println(err)
+				return
+			}
+
+			issue.Wallets[cc] = database.Wallet{
+				Seed:    seed,
+				Address: address,
+			}
+		}
+
+		err = database.Add(db, issue)
 		if err != nil {
 			log.Println(err)
 			return
 		}
+	}
 
-		err = database.IssueAdd(db, repo, issue, seed, address)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		fmt.Fprintf(w, "%s\n", address)
+	err = database.GetWallets(db, &issue, database.HideSeed)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	js, err := json.Marshal(issue)
+	if err != nil {
+		log.Println(err)
 		return
 	}
 
-	_, address, err := database.IssueGet(db, repo, issue)
-	fmt.Fprintf(w, "%s\n", address)
-	return
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(js)
 }
