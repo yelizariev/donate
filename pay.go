@@ -170,8 +170,8 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 			seed := issue.Wallets[wallet.Type].Seed
 			tx, err := wallet.Type.SendAll(seed, address)
 			if err != nil {
-				err = nil
 				log.Println("sendall error", err)
+				err = nil
 			}
 			log.Print("tx -> default dest:", tx)
 			// We don't show this transaction to user, to
