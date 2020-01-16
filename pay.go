@@ -191,7 +191,9 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		}
 
 		if valid {
-			tx, err := wallet.Type.SendAll(wallet.Seed, wallet.Address)
+			// Note that we're getting seed from the issue' wallet
+			seed := issue.Wallets[wallet.Type].Seed
+			tx, err := wallet.Type.SendAll(seed, wallet.Address)
 			if err != nil {
 				log.Println("sendall error", err)
 				err = nil
