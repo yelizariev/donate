@@ -153,6 +153,14 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		}
 	}
 
+	// No pull request was found, create dummy wallets
+	if len(wallets) == 0 {
+		for _, cc := range c.Cryptocurrencies {
+			wallet := userWallet{Type: cc, Found: false}
+			wallets = append(wallets, wallet)
+		}
+	}
+
 	transactions := make(map[c.Cryptocurrency]string)
 	for _, wallet := range wallets {
 		if !wallet.Found {
