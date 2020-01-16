@@ -92,20 +92,7 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 			return
 		}
 
-		for _, cc := range c.Cryptocurrencies {
-			seed, address, err := cc.GenWallet()
-			if err != nil {
-				log.Println(err)
-				return
-			}
-
-			issue.Wallets[cc] = database.Wallet{
-				Seed:    seed,
-				Address: address,
-			}
-		}
-
-		err = database.Add(db, issue)
+		err = genWallets(db, issue)
 		if err != nil {
 			log.Println(err)
 			return
@@ -125,4 +112,21 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(js)
+}
+
+func genWallets(db *sql.DB, issue database.Issue) (err error) {
+	for _, cc := range c.Cryptocurrencies {
+		var seed, address string
+		seed, address, err = cc.GenWallet()
+		if err != nil {
+			return
+		}
+
+		issue.Wallets[cc] = database.Wallet{
+			Seed:    seed,
+			Address: address,
+		}
+	}
+
+	return database.Add(db, issue)
 }
