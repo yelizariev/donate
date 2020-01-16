@@ -6,7 +6,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 	"sort"
 	"strings"
@@ -14,29 +16,6 @@ import (
 	c "code.dumpstack.io/lib/cryptocurrency"
 	"code.dumpstack.io/tools/donate/database"
 )
-
-func getBtcBalance(btc string) (balance float64, err error) {
-	urlf := "https://api.blockcypher.com/v1/btc/main/addrs/%s/balance"
-	resp, err := http.Get(fmt.Sprintf(urlf, btc))
-	if err != nil {
-		return
-	}
-	defer resp.Body.Close()
-
-	var result struct{ Balance float64 }
-	err = json.NewDecoder(resp.Body).Decode(&result)
-	if err != nil {
-		return
-	}
-
-	balance = result.Balance / 100000000
-	return
-}
-
-func getEthBalance(address string) (balance float64, err error) {
-	// TODO
-	return
-}
 
 func genBody(issue database.Issue) (body string) {
 	body = "### Donate to this issue\n"
@@ -64,30 +43,29 @@ func genBody(issue database.Issue) (body string) {
 		body += fmt.Sprintf(format, wallet.Address, wallet.Address)
 	}
 
+	var totalUSD float64
+
 	body += "#### Current balance\n"
 	for _, cc := range keys {
 		wallet := issue.Wallets[cc]
 		format := "- %.8f %s\n"
-		var balance float64
-		var err error
-		switch cc {
-		case c.Bitcoin:
-			balance, err = getBtcBalance(wallet.Address)
-			if err != nil {
-				continue
-			}
-		case c.Ethereum:
-			if wallet.Address == "" {
-				continue
-			}
-			balance, err = getEthBalance(wallet.Address)
-			if err != nil {
-				continue
-			}
+		balance, err := getBalance(cc, wallet.Address)
+		if err != nil {
+			continue
 		}
+
+		rate, err := getUSDConversionRate(cc)
+		if err != nil {
+			continue
+		}
+
+		totalUSD += balance * rate
+
 		symbol := strings.ToUpper(cc.Symbol())
 		body += fmt.Sprintf(format, balance, symbol)
 	}
+
+	body += fmt.Sprintf("- Total $%.2f\n", totalUSD)
 
 	body += "\nUsage:\n"
 	body += "1. Specify this issue in commit message ([keywords]" +
@@ -111,5 +89,90 @@ func genBody(issue database.Issue) (body string) {
 		"Consider donating to the [donation project]" +
 		"(https://github.com/jollheef/donate) " +
 		"itself, it'll help keep it work with zero fees.\n"
+	return
+}
+
+func getUSDConversionRate(cc c.Cryptocurrency) (n float64, err error) {
+	var id string
+	switch cc {
+	case c.Bitcoin:
+		id = "bitcoin"
+	case c.Ethereum:
+		id = "ethereum"
+	default:
+		errors.New(cc.Symbol() + " not supported")
+	}
+
+	format := "https://api.coingecko.com/api/v3/simple/price?ids=%s&vs_currencies=usd"
+	url := fmt.Sprintf(format, id)
+	resp, err := http.Get(url)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Error string
+
+		Bitcoin  struct{ USD float64 }
+		Ethereum struct{ USD float64 }
+	}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return
+	}
+
+	if result.Error != "" {
+		err = errors.New(result.Error)
+		return
+	}
+
+	switch cc {
+	case c.Bitcoin:
+		n = result.Bitcoin.USD
+	case c.Ethereum:
+		n = result.Ethereum.USD
+	default:
+		errors.New(cc.Symbol() + " not supported")
+	}
+	return
+}
+
+func getBalance(cc c.Cryptocurrency, address string) (n float64, err error) {
+	format := "https://api.blockcypher.com/v1/%s/main/addrs/%s/balance"
+	url := fmt.Sprintf(format, cc.Symbol(), address)
+	resp, err := http.Get(url)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Error string
+		// Balance in units
+		Balance uint64
+	}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return
+	}
+
+	if result.Error != "" {
+		err = errors.New(result.Error)
+		return
+	}
+
+	var oneUnit *big.Float
+	switch cc {
+	case c.Bitcoin:
+		oneUnit = big.NewFloat(100000000)
+	case c.Ethereum:
+		oneUnit = big.NewFloat(1000000000000000000)
+	default:
+		errors.New(cc.Symbol() + " not supported")
+	}
+
+	units := new(big.Float).SetUint64(result.Balance)
+	n, _ = new(big.Float).Quo(units, oneUnit).Float64()
 	return
 }
