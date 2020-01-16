@@ -191,6 +191,10 @@ func payHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 		}
 
 		if valid {
+			if issue.Wallets[wallet.Type].Address == wallet.Address {
+				log.Println("destination address is the same")
+				continue
+			}
 			// Note that we're getting seed from the issue' wallet
 			seed := issue.Wallets[wallet.Type].Seed
 			tx, err := wallet.Type.SendAll(seed, wallet.Address)
