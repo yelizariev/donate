@@ -82,6 +82,11 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 	if !exists {
 		// Check that issue is really exists on GitHub
 		ghIssue, _, err := gh.Issues.Get(ctx, owner, project, issue.ID)
+		if err != nil {
+			log.Println(err)
+			fmt.Fprint(w, "invalid repo/issue\n")
+			return
+		}
 
 		// Note: GitHub's REST API v3 considers every pull
 		// request an issue, but not every issue is a pull
@@ -91,11 +96,6 @@ func queryHandler(db *sql.DB, gh *github.Client, ctx context.Context,
 			return
 		}
 
-		if err != nil {
-			log.Println(err)
-			fmt.Fprint(w, "invalid repo/issue\n")
-			return
-		}
 		if *ghIssue.State != "open" {
 			fmt.Fprint(w, "issue is not open\n")
 			return
