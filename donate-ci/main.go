@@ -176,6 +176,13 @@ func walk(gh *github.Client, ctx context.Context, repo, endpoint string) (err er
 	options := github.IssueListByRepoOptions{State: "all"}
 	issues, _, err := gh.Issues.ListByRepo(ctx, owner, project, &options)
 	for _, issue := range issues {
+		// Note: GitHub's REST API v3 considers every pull
+		// request an issue, but not every issue is a pull
+		// request.
+		if issue.IsPullRequest() {
+			continue
+		}
+
 		err = walkIssue(gh, ctx, owner, project, endpoint, issue)
 		if err != nil {
 			log.Println(err)
