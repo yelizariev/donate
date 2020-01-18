@@ -1,5 +1,7 @@
 module code.dumpstack.io/tools/donate
 
+replace code.dumpstack.io/tools/donate/database => ./database
+
 go 1.12
 
 require (
