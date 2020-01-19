@@ -97,7 +97,8 @@ func genBody(issue database.Issue) (body string) {
 		"issue will get all money without commission). " +
 		"Consider donating to the [donation project]" +
 		"(https://github.com/jollheef/donate) " +
-		"itself, it'll help keep it work with zero fees.\n"
+		"itself, it'll help keep it work with zero fees. " +
+		"[List of all issues with bounties](https://donate.dumpstack.io).\n"
 	return
 }
 
