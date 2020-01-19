@@ -4,8 +4,8 @@
     fetch = {
       type = "git";
       url = "https://code.dumpstack.io/lib/cryptocurrency";
-      rev = "85ffa8b6b8eb554df201e5c68911c2c08ffc38be";
-      sha256 = "152nw748nqaik1i4qas26flk7745qqndaj4kghgnwvllbkqjpdqy";
+      rev = "9949fa72f758e6aecc7e35883650b6a0b1595435";
+      sha256 = "115m39qnvwr9fqigdcqvm6811qa0h3yksj8q5wjmdwpjgncaayph";
     };
   }
   {
@@ -144,6 +144,15 @@
     };
   }
   {
+    goPackagePath = "github.com/jollheef/go-js-cardano-wasm-bin";
+    fetch = {
+      type = "git";
+      url = "https://github.com/jollheef/go-js-cardano-wasm-bin";
+      rev = "07db337aa4d2d5702281e377d0fe9eee6fc267af";
+      sha256 = "1gxl4q9zv7f276pxn755bpna6lga7pc4ldizxfbwm9w0zp1akz45";
+    };
+  }
+  {
     goPackagePath = "github.com/mattn/go-sqlite3";
     fetch = {
       type = "git";
@@ -198,12 +207,21 @@
     };
   }
   {
+    goPackagePath = "github.com/wasmerio/go-ext-wasm";
+    fetch = {
+      type = "git";
+      url = "https://github.com/wasmerio/go-ext-wasm";
+      rev = "c27bd6f62e716c1e37de57d2efe5a063d343a96f";
+      sha256 = "0c6qrfhip5gaj4yv1f2pnvv0k8xj2vlfzx9cqy7d2zrzf90krm91";
+    };
+  }
+  {
     goPackagePath = "golang.org/x/crypto";
     fetch = {
       type = "git";
       url = "https://go.googlesource.com/crypto";
-      rev = "61a87790db17894570dfb32dbaa0a4af9ce60cb4";
-      sha256 = "17v9kj0fd13crzkz3nsr5xw1labv7qfjfhksbwic3jrw70kvmz9r";
+      rev = "6d4e4cb37c7d6416dfea8472e751c7b6615267a6";
+      sha256 = "1a2m208zqwx6r4c52ls230r1bc35s3dgihqjqq9ylzii4az7qz9c";
     };
   }
   {
@@ -211,8 +229,8 @@
     fetch = {
       type = "git";
       url = "https://go.googlesource.com/net";
-      rev = "ca1201d0de80cfde86cb01aea620983605dfe99b";
-      sha256 = "16j9xyby1vfl4ch6wqzafxxxnxvcp8vhzknpchwabci1f2zcsn6i";
+      rev = "6afb5195e5aab057fda82e27171243402346b0ad";
+      sha256 = "1aiz41q2yxgg3dxfkn33ff54vhaxbiwcps9j3ia1xx4cqxim38zw";
     };
   }
   {
@@ -229,8 +247,8 @@
     fetch = {
       type = "git";
       url = "https://go.googlesource.com/sys";
-      rev = "86b910548bc16777f40503131aa424ae0a092199";
-      sha256 = "1z8l2wp27q0bd4nc46j31lc7cr6kiw52zi6ix3i121pd3rcyrw44";
+      rev = "b77594299b429d05028403d72b68172959c7dad5";
+      sha256 = "0isfm6kmh4fjhh6m7mrb3zvdjka2y31c5habr5kydl7rg0lwkabv";
     };
   }
   {
