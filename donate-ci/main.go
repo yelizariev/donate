@@ -124,6 +124,8 @@ func triggerPayout(gh *github.Client, ctx context.Context,
 			api = "https://blockchair.com/bitcoin/transaction"
 		case c.Ethereum:
 			api = "https://blockchair.com/ethereum/transaction"
+		case c.Cardano:
+			api = "https://www.seiza.com/blockchain/transaction"
 		default:
 			log.Println("not supported transaction", cc, tx)
 			continue
