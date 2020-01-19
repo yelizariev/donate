@@ -74,6 +74,8 @@ func genBody(issue database.Issue) (body string) {
 
 	body += fmt.Sprintf("- Total $%.2f\n", totalUSD)
 
+	dashboardPing(totalUSD, issue)
+
 	body += "\nUsage:\n"
 	body += "1. Specify this issue in commit message ([keywords]" +
 		"(https://help.github.com/en/github/managing-your-work-on-" +

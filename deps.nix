@@ -260,4 +260,22 @@
       sha256 = "0mndnv3hdngr3bxp7yxfd47cas4prv98sqw534mx7vp38gd88n5r";
     };
   }
+  {
+    goPackagePath = "github.com/syndtr/goleveldb";
+    fetch = {
+      type = "git";
+      url = "https://github.com/syndtr/goleveldb";
+      rev = "758128399b1df3a87e92df6c26c1d2063da8fabe";
+      sha256 = "0mnkzrz4di13g6ggd54my7bkb9nwk8f5k672dyasn467wsg7bf8f";
+    };
+  }
+  {
+    goPackagePath = "github.com/umpc/go-sortedmap";
+    fetch = {
+      type = "git";
+      url = "https://github.com/umpc/go-sortedmap";
+      rev = "64ab94c482f423f2fa36fb190f2f2bd8a9722bb0";
+      sha256 = "19qw0wkydxiai7ph6h4mxz4l2wn7n8ysd9qpfh5gd5bwsyii5jcd";
+    };
+  }
 ]
