@@ -50,7 +50,7 @@ func updateIssue(gh *github.Client, ctx context.Context,
 		return
 	}
 
-	body := genBody(issue)
+	body, totalUSD := genBody(issue)
 
 	comments, _, err := gh.Issues.ListComments(ctx, owner, project, number, nil)
 
@@ -85,6 +85,8 @@ func updateIssue(gh *github.Client, ctx context.Context,
 			return
 		}
 	}
+
+	dashboardPing(totalUSD, issue)
 	return
 }
 

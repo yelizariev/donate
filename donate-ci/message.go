@@ -19,7 +19,7 @@ import (
 	"code.dumpstack.io/tools/donate/database"
 )
 
-func genBody(issue database.Issue) (body string) {
+func genBody(issue database.Issue) (body string, totalUSD float64) {
 	body = "### Donate to this issue\n"
 
 	var keys []c.Cryptocurrency
@@ -50,8 +50,6 @@ func genBody(issue database.Issue) (body string) {
 		body += fmt.Sprintf(format, wallet.Address, wallet.Address)
 	}
 
-	var totalUSD float64
-
 	body += "#### Current balance\n"
 	for _, cc := range keys {
 		wallet := issue.Wallets[cc]
@@ -73,8 +71,6 @@ func genBody(issue database.Issue) (body string) {
 	}
 
 	body += fmt.Sprintf("- Total $%.2f\n", totalUSD)
-
-	dashboardPing(totalUSD, issue)
 
 	body += "\nUsage:\n"
 	body += "1. Specify this issue in commit message ([keywords]" +
