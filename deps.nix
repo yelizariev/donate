@@ -4,8 +4,8 @@
     fetch = {
       type = "git";
       url = "https://code.dumpstack.io/lib/cryptocurrency";
-      rev = "538b1e7c273a885f5d5a8bdd6613b8a7a3762fd2";
-      sha256 = "0agix814j5a5h0r199mx7jnqg1khp3pvh44yl8fy6a2f41x348xy";
+      rev = "e76f2c8496edd19ed40556eacadd1acf8c896f71";
+      sha256 = "1mdaaxmgf5zbq21xbqlndvnwgjwfz95jbgapkw2z5cq03s976hmq";
     };
   }
   {
