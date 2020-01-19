@@ -40,9 +40,15 @@ func main() {
 		"DONATION_ADDRESS_ETH").Default(
 		// default donation address is donating to this project
 		"0xD2237129937E40b32db36Cda0Ae2c82B5ceD2380").String()
+	donationAddressADA := app.Flag("donation-address-ada",
+		"Set the Cardano address to which any not acquired donation will be sent").Envar(
+		"DONATION_ADDRESS_ADA").Default(
+		// default donation address is donating to this project
+		"Ae2tdPwUPEZ68cfEjZjKKRabiqbazMtP69uGaM2pMZRg87fvn4FGvR95BEV").String()
+
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	if len(c.Cryptocurrencies) != 2 {
+	if len(c.Cryptocurrencies) != 3 {
 		log.Println("lib/cryptocurrency supports new cryptocurrencies")
 		log.Println("please update source code")
 		return
@@ -51,6 +57,7 @@ func main() {
 	defaultDests := map[c.Cryptocurrency]string{
 		c.Bitcoin:  *donationAddressBTC,
 		c.Ethereum: *donationAddressETH,
+		c.Cardano:  *donationAddressADA,
 	}
 
 	db, err := database.Open(*databasePath)

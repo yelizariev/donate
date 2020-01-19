@@ -5,12 +5,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 
 	c "code.dumpstack.io/lib/cryptocurrency"
@@ -39,6 +41,11 @@ func genBody(issue database.Issue) (body string) {
 				continue
 			}
 			format = "- ETH: [%s](https://etherscan.io/address/%s)\n"
+		case c.Cardano:
+			if wallet.Address == "" {
+				continue
+			}
+			format = "- ADA: [%s](https://www.seiza.com/blockchain/address/%s)\n"
 		}
 		body += fmt.Sprintf(format, wallet.Address, wallet.Address)
 	}
@@ -99,6 +106,8 @@ func getUSDConversionRate(cc c.Cryptocurrency) (n float64, err error) {
 		id = "bitcoin"
 	case c.Ethereum:
 		id = "ethereum"
+	case c.Cardano:
+		id = "cardano"
 	default:
 		errors.New(cc.Symbol() + " not supported")
 	}
@@ -116,6 +125,7 @@ func getUSDConversionRate(cc c.Cryptocurrency) (n float64, err error) {
 
 		Bitcoin  struct{ USD float64 }
 		Ethereum struct{ USD float64 }
+		Cardano  struct{ USD float64 }
 	}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
@@ -132,6 +142,8 @@ func getUSDConversionRate(cc c.Cryptocurrency) (n float64, err error) {
 		n = result.Bitcoin.USD
 	case c.Ethereum:
 		n = result.Ethereum.USD
+	case c.Cardano:
+		n = result.Cardano.USD
 	default:
 		errors.New(cc.Symbol() + " not supported")
 	}
@@ -139,6 +151,60 @@ func getUSDConversionRate(cc c.Cryptocurrency) (n float64, err error) {
 }
 
 func getBalance(cc c.Cryptocurrency, address string) (n float64, err error) {
+	switch cc {
+	case c.Bitcoin, c.Ethereum:
+		return getBalanceEthBtc(cc, address)
+	case c.Cardano:
+		return getBalanceAda(address)
+	default:
+		errors.New(cc.Symbol() + " not supported")
+	}
+	return
+}
+
+func getBalanceAda(address string) (n float64, err error) {
+	payload := struct {
+		Addresses []string `json:"addresses"`
+	}{Addresses: []string{address}}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+	body := bytes.NewReader(payloadBytes)
+
+	url := "https://iohk-mainnet.yoroiwallet.com/api/txs/utxoSumForAddresses"
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json;charset=UTF-8")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	var result struct{ Sum string }
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return
+	}
+
+	if result.Sum == "" {
+		// not error, just zero
+		return
+	}
+
+	sum, err := strconv.ParseInt(result.Sum, 10, 64)
+	lovelaceFloat := new(big.Float).SetInt64(sum)
+	oneADA := big.NewFloat(1000000)
+	n, _ = new(big.Float).Quo(lovelaceFloat, oneADA).Float64()
+	return
+}
+
+func getBalanceEthBtc(cc c.Cryptocurrency, address string) (n float64, err error) {
 	format := "https://api.blockcypher.com/v1/%s/main/addrs/%s/balance"
 	url := fmt.Sprintf(format, cc.Symbol(), address)
 	resp, err := http.Get(url)
