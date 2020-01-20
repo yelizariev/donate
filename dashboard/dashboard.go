@@ -163,11 +163,14 @@ func getAll(db *leveldb.DB) (kv *sortedmap.SortedMap, err error) {
 		}
 
 		// ignore values older than 24 hours (24 * 60 * 60 = 86400)
+		log.Println(sum, time.Now().Unix())
 		if sum.Unixtime+86400 < time.Now().Unix() {
-			err = db.Delete(key, nil)
-			if err != nil {
-				return
-			}
+			return
+			// TODO
+			// err = db.Delete(key, nil)
+			// if err != nil {
+			// 	return
+			// }
 		}
 
 		kv.Insert(string(key), sum.Cents)
