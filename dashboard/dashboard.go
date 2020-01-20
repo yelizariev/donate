@@ -162,8 +162,8 @@ func getAll(db *leveldb.DB) (kv *sortedmap.SortedMap, err error) {
 			return
 		}
 
-		// ignore values older than 24 hours (24 * 60 = 1440)
-		if sum.Unixtime+1440 < time.Now().Unix() {
+		// ignore values older than 24 hours (24 * 60 * 60 = 86400)
+		if sum.Unixtime+86400 < time.Now().Unix() {
 			err = db.Delete(key, nil)
 			if err != nil {
 				return
