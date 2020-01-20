@@ -154,23 +154,22 @@ func getAll(db *leveldb.DB) (kv *sortedmap.SortedMap, err error) {
 		var sum Sum
 		err = json.Unmarshal(value, &sum)
 		if err != nil {
-			return
+			log.Println("getAll json.Unmarshal", err)
+			continue
 		}
 
 		// ignore zero values
 		if sum.Cents == 0 {
-			return
+			continue
 		}
 
 		// ignore values older than 24 hours (24 * 60 * 60 = 86400)
-		log.Println(sum, time.Now().Unix())
 		if sum.Unixtime+86400 < time.Now().Unix() {
-			return
-			// TODO
-			// err = db.Delete(key, nil)
-			// if err != nil {
-			// 	return
-			// }
+			err = db.Delete(key, nil)
+			if err != nil {
+				log.Println("getAll db.Delete", err)
+				continue
+			}
 		}
 
 		kv.Insert(string(key), sum.Cents)
