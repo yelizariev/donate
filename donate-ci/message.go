@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"sort"
@@ -134,7 +135,19 @@ func genBody(issue database.Issue) (body string, totalUSD float64) {
 
 func dumpIssues(issues []issue) (s string) {
 	for id, issue := range issues {
-		s += fmt.Sprintf("%d. %s — $%s\n", id+1, issue.URL, issue.USD)
+		fields := strings.Split(issue.URL, "/")
+		if len(fields) != 5 {
+			log.Println("url inside database is not valid")
+			continue
+		}
+		owner := fields[1]
+		repo := fields[2]
+		no := fields[4]
+
+		redir := "https://donate.dumpstack.io/redirect?url=" + issue.URL
+
+		url := fmt.Sprintf("[%s/%s#%s](%s)", owner, repo, no, redir)
+		s += fmt.Sprintf("%d. %s — $%s\n", id+1, url, issue.USD)
 	}
 	return
 }
