@@ -5,6 +5,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -36,4 +37,33 @@ func dashboardPing(totalUSD float64, issue database.Issue) {
 		return
 	}
 	defer resp.Body.Close()
+}
+
+type issue struct {
+	URL string
+	USD string
+}
+
+func getIssues(params string) (issues []issue, err error) {
+	resp, err := http.Get("https://donate.dumpstack.io/api" + params)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Issues []issue
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	issues = result.Issues
+	return
+}
+
+func getRepoIssues(repo string) (issues []issue, err error) {
+	return getIssues("?url=" + repo)
+}
+
+func getAllIssues() (issues []issue, err error) {
+	return getIssues("")
 }

@@ -72,7 +72,10 @@ func genBody(issue database.Issue) (body string, totalUSD float64) {
 
 	body += fmt.Sprintf("- Total $%.2f\n", totalUSD)
 
-	body += "\nUsage:\n"
+	// > How to claim a bounty
+
+	body += "\n<details><summary>How to claim a bounty</summary><p>\n\n"
+
 	body += "1. Specify this issue in commit message ([keywords]" +
 		"(https://help.github.com/en/github/managing-your-work-on-" +
 		"github/closing-issues-using-keywords));\n"
@@ -89,12 +92,50 @@ func genBody(issue database.Issue) (body string, totalUSD float64) {
 	body = body[:len(body)-1] + ";"
 	body += "\n3. When pull request will be accepted, you'll immediately " +
 		"get all cryptocurrency to wallets that you're specified.\n"
+
+	body += "\n</p></details>\n\n"
+
+	// > Top 10 issues with a bounty (this repository)
+
+	issues, err := getRepoIssues(issue.Repo)
+	if err == nil && len(issues) != 0 {
+		body += "<details><summary>" +
+			"Top 10 issues with a bounty (this repository)" +
+			"</summary><p>\n\n"
+
+		body += dumpIssues(issues)
+
+		body += "\n</p></details>\n\n"
+	}
+
+	// > Top 10 issues with a bounty (all repositories)
+
+	issues, err = getAllIssues()
+	if err == nil && len(issues) != 0 {
+		body += "<details><summary>" +
+			"Top 10 issues with a bounty (all repositories)" +
+			"</summary><p>\n\n"
+
+		body += dumpIssues(issues)
+
+		body += "\n</p></details>\n\n"
+	}
+
+	// Footer
+
 	body += "###### The default fee is 0% (someone who will solve this " +
 		"issue will get all money without commission). " +
 		"Consider donating to the [donation project]" +
 		"(https://github.com/jollheef/donate) " +
 		"itself, it'll help keep it work with zero fees. " +
 		"[List of all issues with bounties](https://donate.dumpstack.io).\n"
+	return
+}
+
+func dumpIssues(issues []issue) (s string) {
+	for id, issue := range issues {
+		s += fmt.Sprintf("%d. %s — $%s\n", id+1, issue.URL, issue.USD)
+	}
 	return
 }
 
