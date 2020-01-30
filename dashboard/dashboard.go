@@ -47,6 +47,13 @@ func main() {
 		}
 	})
 
+	http.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+		err = apiHandler(db, w, r)
+		if err != nil {
+			log.Println(err)
+		}
+	})
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		err = indexPage(db, w, r)
 		if err != nil {
@@ -106,6 +113,52 @@ func putHandler(db *leveldb.DB, gh *github.Client, ctx context.Context,
 	return
 }
 
+func apiHandler(db *leveldb.DB, w http.ResponseWriter, r *http.Request) (err error) {
+	var repo string
+	values, ok := r.URL.Query()["url"]
+	if !ok || len(values[0]) < 1 {
+		repo = "all"
+	} else {
+		repo = string(values[0])
+	}
+
+	kv, err := getAll(db)
+	if err != nil {
+		return
+	}
+
+	iter, err := kv.IterCh()
+	if err != nil {
+		return
+	}
+	defer iter.Close()
+
+	type issue struct {
+		URL string
+		USD string
+	}
+
+	var output struct {
+		Issues []issue
+	}
+
+	for rec := range iter.Records() {
+		if repo != "all" && !strings.HasPrefix(rec.Key.(string), repo) {
+			continue
+		}
+
+		usd := float64(rec.Val.(int)) / float64(100)
+		url := "https://" + rec.Key.(string)
+
+		output.Issues = append(output.Issues, issue{
+			URL: url,
+			USD: fmt.Sprintf("%.02f", usd),
+		})
+	}
+
+	return json.NewEncoder(w).Encode(output)
+}
+
 func indexPage(db *leveldb.DB, w http.ResponseWriter, r *http.Request) (err error) {
 	kv, err := getAll(db)
 	if err != nil {
@@ -132,7 +185,7 @@ func indexPage(db *leveldb.DB, w http.ResponseWriter, r *http.Request) (err erro
 	for rec := range iter.Records() {
 		ft := "<li>$%.02f — <a href=\"https://%s\">%s</a></li>\n"
 		usd := float64(rec.Val.(int)) / float64(100)
-		fmt.Fprintf(w, ft, usd, rec.Key, rec.Key)
+		fmt.Fprintf(w, ft, usd, rec.Key.(string), rec.Key.(string))
 	}
 	fmt.Fprint(w, "</ul>")
 
