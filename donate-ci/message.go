@@ -108,7 +108,7 @@ func genBody(gh *github.Client, ctx context.Context, issue database.Issue) (
 			"Top 10 issues with a bounty (this repository)" +
 			"</summary><p>\n\n"
 
-		body += dumpIssues(gh, ctx, issues)
+		body += dumpIssues(gh, ctx, issues, 10)
 
 		body += "\n</p></details>\n\n"
 	}
@@ -121,7 +121,7 @@ func genBody(gh *github.Client, ctx context.Context, issue database.Issue) (
 			"Top 10 issues with a bounty (all repositories)" +
 			"</summary><p>\n\n"
 
-		body += dumpIssues(gh, ctx, issues)
+		body += dumpIssues(gh, ctx, issues, 10)
 
 		body += "\n</p></details>\n\n"
 	}
@@ -137,8 +137,12 @@ func genBody(gh *github.Client, ctx context.Context, issue database.Issue) (
 	return
 }
 
-func dumpIssues(gh *github.Client, ctx context.Context, issues []issue) (s string) {
+func dumpIssues(gh *github.Client, ctx context.Context, issues []issue, n int) (s string) {
 	for id, issue := range issues {
+		if id > n-1 {
+			break
+		}
+
 		fields := strings.Split(issue.URL, "/")
 		if len(fields) != 5 {
 			log.Println("url inside database is not valid")
