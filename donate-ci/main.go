@@ -50,7 +50,7 @@ func updateIssue(gh *github.Client, ctx context.Context,
 		return
 	}
 
-	body, totalUSD := genBody(issue)
+	body, totalUSD := genBody(gh, ctx, issue)
 
 	comments, _, err := gh.Issues.ListComments(ctx, owner, project, number, nil)
 

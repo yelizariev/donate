@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,9 +19,12 @@ import (
 
 	c "code.dumpstack.io/lib/cryptocurrency"
 	"code.dumpstack.io/tools/donate/database"
+	"github.com/google/go-github/v29/github"
 )
 
-func genBody(issue database.Issue) (body string, totalUSD float64) {
+func genBody(gh *github.Client, ctx context.Context, issue database.Issue) (
+	body string, totalUSD float64) {
+
 	body = "### Donate to this issue\n"
 
 	var keys []c.Cryptocurrency
@@ -104,7 +108,7 @@ func genBody(issue database.Issue) (body string, totalUSD float64) {
 			"Top 10 issues with a bounty (this repository)" +
 			"</summary><p>\n\n"
 
-		body += dumpIssues(issues)
+		body += dumpIssues(gh, ctx, issues)
 
 		body += "\n</p></details>\n\n"
 	}
@@ -117,7 +121,7 @@ func genBody(issue database.Issue) (body string, totalUSD float64) {
 			"Top 10 issues with a bounty (all repositories)" +
 			"</summary><p>\n\n"
 
-		body += dumpIssues(issues)
+		body += dumpIssues(gh, ctx, issues)
 
 		body += "\n</p></details>\n\n"
 	}
@@ -133,7 +137,7 @@ func genBody(issue database.Issue) (body string, totalUSD float64) {
 	return
 }
 
-func dumpIssues(issues []issue) (s string) {
+func dumpIssues(gh *github.Client, ctx context.Context, issues []issue) (s string) {
 	for id, issue := range issues {
 		fields := strings.Split(issue.URL, "/")
 		if len(fields) != 5 {
@@ -142,11 +146,22 @@ func dumpIssues(issues []issue) (s string) {
 		}
 		owner := fields[1]
 		repo := fields[2]
-		no := fields[4]
+		no, err := strconv.Atoi(fields[4])
+		if err != nil {
+			log.Println("issue id is not valid")
+			continue
+		}
 
 		redir := "https://donate.dumpstack.io/redirect?url=" + issue.URL
 
-		url := fmt.Sprintf("[%s/%s#%s](%s)", owner, repo, no, redir)
+		ghIssue, _, err := gh.Issues.Get(ctx, owner, repo, no)
+		var name string
+		if err == nil {
+			name = *ghIssue.Title
+			name += " — "
+		}
+
+		url := fmt.Sprintf("%s[%s/%s#%d](%s)", name, owner, repo, no, redir)
 		s += fmt.Sprintf("%d. %s — $%s\n", id+1, url, issue.USD)
 	}
 	return
