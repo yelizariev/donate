@@ -54,6 +54,8 @@ func main() {
 		}
 	})
 
+	http.HandleFunc("/redirect", redirectHandler)
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		err = indexPage(db, w, r)
 		if err != nil {
@@ -242,35 +244,10 @@ func getAll(db *leveldb.DB) (kv *sortedmap.SortedMap, err error) {
 // will be banned.
 //
 func check(gh *github.Client, ctx context.Context, url, key string, sum int) (err error) {
-	// only alphanumeric, underscore and dash
-	re := regexp.MustCompile("^[\\./a-zA-Z0-9_-]*$")
-	valid := re.MatchString(url)
-	if !valid {
-		err = errors.New("invalid url")
+	owner, project, issueNo, err := parseURL(url)
+	if err != nil {
 		return
 	}
-
-	// github.com/jollheef/donate/issues/9
-	fields := strings.Split(url, "/")
-	if len(fields) != 5 {
-		err = errors.New("invalid url")
-		return
-	}
-
-	// [github.com]/jollheef/donate/issues/9
-	if fields[0] != "github.com" {
-		// no support of anything else yet
-		err = errors.New("invalid url")
-		return
-	}
-
-	// github.com/[jollheef]/donate/issues/9
-	if len(fields[1]) > 39 {
-		// Github has a max username length of 39 characters
-		err = errors.New("invalid url")
-		return
-	}
-	owner := fields[1]
 
 	// Check for whitelist
 	hashedAccessToken, exists := whitelist[owner]
@@ -282,26 +259,6 @@ func check(gh *github.Client, ctx context.Context, url, key string, sum int) (er
 	// Check ACCESS_TOKEN
 	if sha256sum(key) != hashedAccessToken {
 		err = errors.New("invalid access token for " + owner)
-		return
-	}
-
-	// github.com/jollheef/[donate]/issues/9
-	if len(fields[2]) > 100 {
-		// Github has a max repository name length of 100 characters
-		err = errors.New("invalid url")
-		return
-	}
-	project := fields[2]
-
-	// github.com/jollheef/donate/[issues]/9
-	if fields[3] != "issues" {
-		err = errors.New("invalid url")
-		return
-	}
-
-	// github.com/jollheef/donate/issues/[9]
-	issueNo, err := strconv.Atoi(fields[4])
-	if err != nil {
 		return
 	}
 
@@ -331,7 +288,81 @@ func check(gh *github.Client, ctx context.Context, url, key string, sum int) (er
 	return
 }
 
+func parseURL(url string) (owner, project string, issueNo int, err error) {
+	// only alphanumeric, underscore and dash
+	re := regexp.MustCompile("^[\\./a-zA-Z0-9_-]*$")
+	valid := re.MatchString(url)
+	if !valid {
+		err = errors.New("invalid url")
+		return
+	}
+
+	// github.com/jollheef/donate/issues/9
+	fields := strings.Split(url, "/")
+	if len(fields) != 5 {
+		err = errors.New("invalid url")
+		return
+	}
+
+	// [github.com]/jollheef/donate/issues/9
+	if fields[0] != "github.com" {
+		// no support of anything else yet
+		err = errors.New("invalid url")
+		return
+	}
+
+	// github.com/[jollheef]/donate/issues/9
+	if len(fields[1]) > 39 {
+		// Github has a max username length of 39 characters
+		err = errors.New("invalid url")
+		return
+	}
+	owner = fields[1]
+
+	// github.com/jollheef/[donate]/issues/9
+	if len(fields[2]) > 100 {
+		// Github has a max repository name length of 100 characters
+		err = errors.New("invalid url")
+		return
+	}
+	project = fields[2]
+
+	// github.com/jollheef/donate/[issues]/9
+	if fields[3] != "issues" {
+		err = errors.New("invalid url")
+		return
+	}
+
+	// github.com/jollheef/donate/issues/[9]
+	issueNo, err = strconv.Atoi(fields[4])
+	if err != nil {
+		err = errors.New("invalid issue number")
+		return
+	}
+
+	return
+}
+
 func sha256sum(data string) string {
 	h := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(h[:])
+}
+
+func redirectHandler(w http.ResponseWriter, r *http.Request) {
+	values, ok := r.URL.Query()["url"]
+	if !ok || len(values[0]) < 1 {
+		return
+	}
+	url := string(values[0])
+
+	_, _, _, err := parseURL(url)
+	if err != nil {
+		return
+	}
+
+	body := "<head>"
+	body += "<meta http-equiv='refresh' content='0; URL=https://" + url + "'>"
+	body += "</head>"
+
+	fmt.Fprint(w, body)
 }
