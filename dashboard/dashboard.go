@@ -150,7 +150,7 @@ func apiHandler(db *leveldb.DB, w http.ResponseWriter, r *http.Request) (err err
 		}
 
 		usd := float64(rec.Val.(int)) / float64(100)
-		url := "https://" + rec.Key.(string)
+		url := rec.Key.(string)
 
 		output.Issues = append(output.Issues, issue{
 			URL: url,
