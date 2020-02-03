@@ -10,7 +10,7 @@ Goals:
 - KISS.
 - Zero-fee (the fee is voluntary as a donation to the project).
 - Self-hosted.
-- Multiple cryptocurrencies.
+- Multiple cryptocurrencies (Bitcoin, Ethereum and Cardano).
 - Multiple hosting (so far GitHub only).
 
 How it works:
@@ -18,7 +18,7 @@ How it works:
 0. (optional) The owner of the repository does setting up a donation daemon.
 1. The owner of the repository adds [GitHub action](.github/workflows/donate.yml) (it's the easiest way to work with GitHub).
 2. Someone opens an issue, then GitHub action shows cryptocurrency addresses (and updates from time to time).
-3. Someone solves the issue, adds to commit message `Fixes #N`, then put to pull request his BTC, ETH addresses in the format: BTC{address}, ETH{address};
+3. Someone solves the issue, adds to commit message `Fixes #N`, then put to pull request his BTC, ETH, ADA addresses in the format: BTC{address}, ETH{address}, ADA{address} et cetera;
 4. GitHub Action triggers payout on donation daemon.
 5. If no one acquired money then payout going to donation address (default is donating to this project).
 
