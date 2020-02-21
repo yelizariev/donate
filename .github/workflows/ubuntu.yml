@@ -25,6 +25,8 @@ jobs:
       run: |
         curl https://nixos.org/nix/install | sh
         . ~/.nix-profile/etc/profile.d/nix.sh
+        # Use latest stable nixpkgs channel
+        nix-channel --add https://nixos.org/channels/nixos-19.09 nixpkgs
         nix-channel --update
 
     - name: Build
