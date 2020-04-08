@@ -19,8 +19,10 @@ How it works:
 1. The owner of the repository adds [GitHub action](.github/workflows/donate.yml) (it's the easiest way to work with GitHub).
 2. Someone opens an issue, then GitHub action shows cryptocurrency addresses (and updates from time to time).
 3. Someone solves the issue, adds to commit message `Fixes #N`, then put to pull request his BTC, ETH, ADA addresses in the format: BTC{address}, ETH{address}, ADA{address} et cetera;
-4. GitHub Action triggers payout on donation daemon.
-5. If no one acquired money then payout going to donation address (default is donating to this project).
+4. The pull request is accepted
+5. Repository administrator adds label "Paid" to the issue
+6. GitHub Action triggers payout on donation daemon.
+7. If no one acquired money then payout going to donation address (default is donating to this project).
 
 This project uses [Semantic Versioning](https://semver.org/).
 
